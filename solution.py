@@ -5,6 +5,7 @@ import struct
 import time
 import select
 import binascii
+import statistics
 # Should use stdev
 
 ICMP_ECHO_REQUEST = 8
@@ -48,9 +49,12 @@ def receiveOnePing(mySocket, ID, timeout, destAddr):
         recPacket, addr = mySocket.recvfrom(1024)
 
         # Fill in start
-
-        # Fetch the ICMP header from the IP packet
-
+        if (addr[0] == destAddr):
+          # Fetch the ICMP header from the IP packet
+          (reply_type, reply_code, reply_checksum, reply_ID, reply_seq) = struct.unpack("bbHHh", recPacket[20:28])
+          if (reply_type == 0 and reply_code == 0 and reply_ID == ID and reply_seq == 1):
+            return time.time() - startedSelect
+            
         # Fill in end
         timeLeft = timeLeft - howLongInSelect
         if timeLeft <= 0:
@@ -109,14 +113,21 @@ def ping(host, timeout=1):
     
     #Send ping requests to a server separated by approximately one second
     #Add something here to collect the delays of each ping in a list so you can calculate vars after your ping
-    
+    reply_times = []
     for i in range(0,4): #Four pings will be sent (loop runs for i=0, 1, 2, 3)
         delay = doOnePing(dest, timeout)
+        if (delay != "Request timed out."):
+          reply_times.append(delay)
         print(delay)
         time.sleep(1)  # one second
         
     #You should have the values of delay for each ping here; fill in calculation for packet_min, packet_avg, packet_max, and stdev
-    #vars = [str(round(packet_min, 8)), str(round(packet_avg, 8)), str(round(packet_max, 8)),str(round(stdev(stdev_var), 8))]
+    packet_min = min(reply_times)
+    packet_max = max(reply_times)
+    packet_avg = sum(reply_times) / len(reply_times)
+    packet_stdev = statistics.stdev(reply_times)
+    
+    vars = [str(round(packet_min, 8)), str(round(packet_avg, 8)), str(round(packet_max, 8)), str(round(packet_stdev, 8))]
 
     return vars
 
